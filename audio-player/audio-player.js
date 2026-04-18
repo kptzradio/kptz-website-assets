@@ -216,7 +216,18 @@
     }
 
     connectedCallback() {
-      this.dispatchEvent(new CustomEvent('audio-player-ready', { bubbles: true }));
+      this._upgradeProperty('src');
+      this._upgradeProperty('track-name');
+      this._upgradeProperty('artist-name');
+      this._upgradeProperty('cover-image');
+    }
+
+    _upgradeProperty(prop) {
+      if  (this.hasOwnProperty(prop)) {
+        let value = this[prop];
+        delete this[prop];
+        this[prop] = value;
+      }
     }
 
     // JS property setters — mirrors your existing repeater code style
@@ -233,26 +244,38 @@
     get coverImage()    { return this.getAttribute('cover-image') || ''; }
 
     attributeChangedCallback(name, _old, val) {
+      // If the value hasn't actually changed or is null, bail early
+      if (_old === val || val === null) return;
+    
       switch (name) {
         case 'src':
           this._audio.src = val;
+          
+          // The "Magic" line: Forces the browser to talk to Cloudflare R2 
+          // immediately to get the duration metadata.
+          this._audio.load(); 
+          
           this._seek.value = 0;
           this._updateSeekFill(0);
           this._setPlaying(false);
           this._timeEl.textContent = '0:00 / --:--';
           break;
+          
         case 'track-name':
           this._trackEl.textContent = val;
           break;
+          
         case 'artist-name':
           this._artistEl.textContent = val;
           break;
+          
         case 'cover-image':
-          this._cover.src = val;
+          // Ensure we don't try to set an empty string as a source
+          if (val) this._cover.src = val;
           break;
       }
     }
-
+    
     _bindEvents() {
       const audio = this._audio;
 
