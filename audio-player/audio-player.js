@@ -216,12 +216,16 @@
     }
 
     connectedCallback() {
-      this._upgradeProperty('src');
-      this._upgradeProperty('track-name');
-      this._upgradeProperty('artist-name');
-      this._upgradeProperty('cover-image');
+      // 1. Force a manual check of all attributes immediately upon connection
+      // This catches data that was set while the element was being moved in the repeater
+      ['src', 'track-name', 'artist-name', 'cover-image'].forEach(attr => {
+        const val = this.getAttribute(attr);
+        if (val) {
+          this.attributeChangedCallback(attr, null, val);
+        }
+      });
     }
-
+    
     _upgradeProperty(prop) {
       // Check if there is an attribute already on the HTML tag
       const val = this.getAttribute(prop);
@@ -254,34 +258,22 @@
     }
 
     attributeChangedCallback(name, _old, val) {
-      // If the value hasn't actually changed or is null, bail early
-      if (_old === val || val === null) return;
-    
+      if (!val || _old === val) return;
       switch (name) {
         case 'src':
           this._audio.src = val;
-          
-          // The "Magic" line: Forces the browser to talk to Cloudflare R2 
-          // immediately to get the duration metadata.
-          this._audio.load(); 
-          
-          this._seek.value = 0;
+          this._audio.load(); // Force R2 metadata fetch
           this._updateSeekFill(0);
-          this._setPlaying(false);
-          this._timeEl.textContent = '0:00 / --:--';
+          this._updateTime();
           break;
-          
         case 'track-name':
           this._trackEl.textContent = val;
           break;
-          
         case 'artist-name':
           this._artistEl.textContent = val;
           break;
-          
         case 'cover-image':
-          // Ensure we don't try to set an empty string as a source
-          if (val) this._cover.src = val;
+          this._cover.src = val;
           break;
       }
     }
