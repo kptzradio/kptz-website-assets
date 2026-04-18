@@ -370,17 +370,25 @@
 
   const _kptzObserver = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
-      for (const node of mutation.addedNodes) {
-        if (node.nodeName === 'KPTZ-AUDIO-PLAYER' && node._pending) {
-          node._connected = true;
-          Object.entries(node._pending).forEach(([name, val]) => {
-            node._applyAttribute(name, val);
-          });
-        }
+      if (
+        mutation.type === 'attributes' &&
+        mutation.target.nodeName === 'KPTZ-AUDIO-PLAYER' &&
+        mutation.target._pending &&
+        !mutation.target._connected
+      ) {
+        const node = mutation.target;
+        node._connected = true;
+        Object.entries(node._pending).forEach(([name, val]) => {
+          node._applyAttribute(name, val);
+        });
       }
     }
   });
 
-  _kptzObserver.observe(document.documentElement, { childList: true, subtree: true });
-
+  _kptzObserver.observe(document.documentElement, { 
+    attributes: true, 
+    subtree: true,
+    attributeFilter: ['src', 'track-name', 'artist-name', 'cover-image']
+  });
+  
 })();
