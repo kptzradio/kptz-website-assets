@@ -258,7 +258,7 @@
     }
 
     attributeChangedCallback(name, _old, val) {
-      if (!val || _old === val) return;
+      if (!val) return;
       switch (name) {
         case 'src':
           this._audio.src = val;
