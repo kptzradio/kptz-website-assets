@@ -218,15 +218,16 @@
     connectedCallback() {
       this._connected = true;
       console.log('[kptz-player] connectedCallback fired, checking attributes...');
-      ['src', 'track-name', 'artist-name', 'cover-image'].forEach(attr => {
-        const val = this.getAttribute(attr);
-        console.log(`[kptz-player] attr ${attr} = ${val}`);
-        if (val) {
-          this.attributeChangedCallback(attr, null, val);
-        }
-      });
+      
+      // Apply any pending attributes that arrived before connection
+      if (this._pending) {
+        Object.entries(this._pending).forEach(([name, val]) => {
+          console.log(`[kptz-player] applying pending attr ${name} = ${val}`);
+          this._applyAttribute(name, val);
+        });
+      }
     }
-
+    
     _upgradeProperty(prop) {
       // Check if there is an attribute already on the HTML tag
       const val = this.getAttribute(prop);
@@ -249,26 +250,24 @@
     set coverImage(val) { this.setAttribute('cover-image', val); }
     get coverImage()    { return this.getAttribute('cover-image') || ''; }
 
-    set data(payload) {
-      if (!payload) return;
-      // This calls the existing setters you already have
-      this.src = payload.src || '';
-      this.trackName = payload.trackName || '';
-      this.artistName = payload.artistName || '';
-      this.coverImage = payload.coverImage || '';
+    attributeChangedCallback(name, _old, val) {
+      console.log(`[kptz-player] attributeChangedCallback: ${name} = ${val}, connected = ${this._connected}`);
+      if (!val) return;
+      
+      // Store pending data regardless of connection state
+      this._pending = this._pending || {};
+      this._pending[name] = val;
+      
+      // Only apply immediately if already connected
+      if (!this._connected) return;
+      this._applyAttribute(name, val);
     }
 
-    attributeChangedCallback(name, _old, val) {
-      console.log(`[kptz-player] attributeChangedCallback: ${name} = ${val}, connected = ${this._connected}`);      
-      if (!val) return;
-      if (!this._connected) {
-        return;
-      }
-      
+    _applyAttribute(name, val) {
       switch (name) {
         case 'src':
           this._audio.src = val;
-          this._audio.load(); // Force R2 metadata fetch
+          this._audio.load();
           this._updateSeekFill(0);
           this._updateTime();
           break;
