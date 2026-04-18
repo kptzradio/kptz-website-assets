@@ -244,6 +244,15 @@
     set coverImage(val) { this.setAttribute('cover-image', val); }
     get coverImage()    { return this.getAttribute('cover-image') || ''; }
 
+    set data(payload) {
+      if (!payload) return;
+      // This calls the existing setters you already have
+      this.src = payload.src || '';
+      this.trackName = payload.trackName || '';
+      this.artistName = payload.artistName || '';
+      this.coverImage = payload.coverImage || '';
+    }
+
     attributeChangedCallback(name, _old, val) {
       // If the value hasn't actually changed or is null, bail early
       if (_old === val || val === null) return;
