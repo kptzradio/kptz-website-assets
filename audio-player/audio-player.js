@@ -216,8 +216,7 @@
     }
 
     connectedCallback() {
-      // 1. Force a manual check of all attributes immediately upon connection
-      // This catches data that was set while the element was being moved in the repeater
+      this._connected = true;
       ['src', 'track-name', 'artist-name', 'cover-image'].forEach(attr => {
         const val = this.getAttribute(attr);
         if (val) {
@@ -259,6 +258,10 @@
 
     attributeChangedCallback(name, _old, val) {
       if (!val) return;
+      if (!this._connected) {
+        return;
+      }
+      
       switch (name) {
         case 'src':
           this._audio.src = val;
