@@ -217,14 +217,16 @@
 
     connectedCallback() {
       this._connected = true;
+      console.log('[kptz-player] connectedCallback fired, checking attributes...');
       ['src', 'track-name', 'artist-name', 'cover-image'].forEach(attr => {
         const val = this.getAttribute(attr);
+        console.log(`[kptz-player] attr ${attr} = ${val}`);
         if (val) {
           this.attributeChangedCallback(attr, null, val);
         }
       });
     }
-    
+
     _upgradeProperty(prop) {
       // Check if there is an attribute already on the HTML tag
       const val = this.getAttribute(prop);
@@ -257,6 +259,7 @@
     }
 
     attributeChangedCallback(name, _old, val) {
+      console.log(`[kptz-player] attributeChangedCallback: ${name} = ${val}, connected = ${this._connected}`);      
       if (!val) return;
       if (!this._connected) {
         return;
