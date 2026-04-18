@@ -367,20 +367,4 @@
   if (!customElements.get('kptz-audio-player')) {
     customElements.define('kptz-audio-player', KptzAudioPlayer);
   }
-
-  const _kptzObserver = new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-      for (const node of mutation.addedNodes) {
-        if (node.nodeName === 'KPTZ-AUDIO-PLAYER' && node._pending) {
-          node._connected = true;
-          Object.entries(node._pending).forEach(([name, val]) => {
-            node._applyAttribute(name, val);
-          });
-        }
-      }
-    }
-  });
-
-  _kptzObserver.observe(document.documentElement, { childList: true, subtree: true });
-
 })();
