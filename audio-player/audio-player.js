@@ -216,15 +216,7 @@
     }
 
     connectedCallback() {
-      const src = this.getAttribute('src');
-      const trackName = this.getAttribute('track-name');
-      const artistName = this.getAttribute('artist-name');
-      const coverImage = this.getAttribute('cover-image');
-  
-      if (src) this.attributeChangedCallback('src', null, src);
-      if (trackName) this.attributeChangedCallback('track-name', null, trackName);
-      if (artistName) this.attributeChangedCallback('artist-name', null, artistName);
-      if (coverImage) this.attributeChangedCallback('cover-image', null, coverImage);
+      this.dispatchEvent(new CustomEvent('audio-player-ready', { bubbles: true }));
     }
 
     // JS property setters — mirrors your existing repeater code style
