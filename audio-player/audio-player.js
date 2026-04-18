@@ -223,13 +223,14 @@
     }
 
     _upgradeProperty(prop) {
-      if  (this.hasOwnProperty(prop)) {
-        let value = this[prop];
-        delete this[prop];
-        this[prop] = value;
+      // Check if there is an attribute already on the HTML tag
+      const val = this.getAttribute(prop);
+      if (val) {
+        // Manually trigger the update logic
+        this.attributeChangedCallback(prop, null, val);
       }
     }
-
+    
     // JS property setters — mirrors your existing repeater code style
     set src(val)        { this.setAttribute('src', val); }
     get src()           { return this.getAttribute('src') || ''; }
