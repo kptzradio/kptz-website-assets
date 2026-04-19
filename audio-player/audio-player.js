@@ -176,6 +176,10 @@
   `;
 
 class KptzAudioPlayer extends HTMLElement {
+    static get observedAttributes() {
+      return ['player-data'];
+    }
+
     constructor() {
       super();
       this.attachShadow({ mode: 'open' });
@@ -196,41 +200,32 @@ class KptzAudioPlayer extends HTMLElement {
     }
 
     connectedCallback() {
-      console.log('[kptz-player] Element attached, polling own properties for payload...');
-      this._attemptDataLoad();
+      // In case Wix set the attribute slightly before we connected
+      if (this.hasAttribute('player-data')) {
+        this.attributeChangedCallback('player-data', null, this.getAttribute('player-data'));
+      }
     }
 
-    _attemptDataLoad(attempts = 0) {
-      if (attempts > 30) {
-        console.error('[kptz-player] Gave up looking for self.playerPayloadData after 3 seconds.');
-        return;
-      }
-
-      // Instead of reading the DOM, we just read our own JavaScript property
-      if (this.playerPayloadData) {
+    attributeChangedCallback(name, _old, val) {
+      if (name === 'player-data' && val && val !== _old) {
         try {
-          const data = JSON.parse(this.playerPayloadData);
-          console.log(`[kptz-player] Internal Property Payload found for: ${data.track}`);
+          const data = JSON.parse(val);
           
           if (data.src && this._audio.src !== data.src) {
             this._audio.src = data.src;
             this._audio.load();
           }
+          
           if (data.track) this._trackEl.textContent = data.track;
           if (data.artist) this._artistEl.textContent = data.artist;
           if (data.cover) this._cover.src = data.cover;
 
           this._updateSeekFill(0);
           this._updateTime();
-          
-          // Clear the property so we don't double-load if Wix recycles the component
-          this.playerPayloadData = null; 
+          console.log(`[kptz-player] Successfully loaded track: ${data.track}`);
         } catch (err) {
-          console.error('[kptz-player] Failed to parse internal property JSON:', err);
+          console.error('[kptz-player] JSON parse error:', err);
         }
-      } else {
-        // Wix's bridge hasn't synchronized the property yet, check back in 100ms
-        setTimeout(() => this._attemptDataLoad(attempts + 1), 100);
       }
     }
 
