@@ -193,7 +193,7 @@
 
   class KptzAudioPlayer extends HTMLElement {
     static get observedAttributes() {
-      return ['src', 'track-name', 'artist-name', 'cover-image'];
+      return ['src', 'track-name', 'artist-name', 'cover-image', 'player-data'];
     }
 
     constructor() {
@@ -253,8 +253,27 @@
     get coverImage()    { return this.getAttribute('cover-image') || ''; }
 
     attributeChangedCallback(name, _old, val) {
-      console.log(`[kptz-player] attributeChangedCallback: ${name} = ${val}, connected = ${this._connected}`);
       if (!val) return;
+
+      if (name === 'player-data') {
+        try {
+          const data = JSON.parse(val);
+
+          if (data.src) {
+            this._audio.src = data.src;
+            this._audio.load();
+          }
+          if (data.track) this._trackEl.textContent = data.track;
+          if (data.artist) this._artistEl.textContent = data.artist;
+          if (data.cover) this._cover.src = data.cover;
+
+          this._updateSeekFill(0);
+          this._updateTime();
+        catch {
+          console.error('[kptz-player] Failed to parse player-data', e);
+        }
+        return;
+      ]
       
       // Store pending data regardless of connection state
       this._pending = this._pending || {};
