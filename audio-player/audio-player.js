@@ -175,11 +175,11 @@
     <audio preload="metadata"></audio>
   `;
 
-  class KptzAudioPlayer extends HTMLElement {
+class KptzAudioPlayer extends HTMLElement {
     static get observedAttributes() {
-      return ['player-data'];
+      return ['src', 'track-name', 'artist-name', 'cover-image'];
     }
-    
+
     constructor() {
       super();
       this.attachShadow({ mode: 'open' });
@@ -199,35 +199,29 @@
       this._bindEvents();
     }
 
-    attributeChangedCallback(name, _old, val) {
-      if (name === 'player-data' && val && val !== _old) {
-        try {
-          const data = JSON.parse(val);
-          
-          if (data.src && this._audio.src !== data.src) {
-            this._audio.src = data.src;
-            this._audio.load();
-          }
-          
-          if (data.track) this._trackEl.textContent = data.track;
-          if (data.artist) this._artistEl.textContent = data.artist;
-          if (data.cover) this._cover.src = data.cover;
-  
-          this._updateSeekFill(0);
-          this._updateTime();
-        } catch (err) {
-          console.error('[kptz-player] Failed to parse player-data:', err);
-        }
-      }
+    connectedCallback() {
+        console.log('[kptz-player] Element attached to DOM!');
     }
-    
+
+    attributeChangedCallback(name, _old, val) {
+      if (!val) return;
+      console.log(`[kptz-player] Received ${name}: ${val.substring(0, 25)}...`);
+
+      if (name === 'src' && this._audio.src !== val) {
+        this._audio.src = val;
+        this._audio.load();
+      }
+      if (name === 'track-name') this._trackEl.textContent = val;
+      if (name === 'artist-name') this._artistEl.textContent = val;
+      if (name === 'cover-image') this._cover.src = val;
+
+      this._updateSeekFill(0);
+      this._updateTime();
+    }
+
     _bindEvents() {
       const audio = this._audio;
-
-      audio.addEventListener('loadedmetadata', () => {
-        this._updateTime();
-      });
-
+      audio.addEventListener('loadedmetadata', () => this._updateTime());
       audio.addEventListener('timeupdate', () => {
         if (!this._dragging) {
           const pct = audio.duration ? (audio.currentTime / audio.duration) * 100 : 0;
@@ -236,38 +230,25 @@
           this._updateTime();
         }
       });
-
       audio.addEventListener('ended', () => {
         this._setPlaying(false);
         this._seek.value = 0;
         this._updateSeekFill(0);
       });
-
       this._playBtn.addEventListener('click', () => {
-        if (audio.paused) {
-          audio.play();
-          this._setPlaying(true);
-        } else {
-          audio.pause();
-          this._setPlaying(false);
-        }
+        if (audio.paused) { audio.play(); this._setPlaying(true); } 
+        else { audio.pause(); this._setPlaying(false); }
       });
-
       this._seek.addEventListener('mousedown',  () => { this._dragging = true; });
       this._seek.addEventListener('touchstart', () => { this._dragging = true; }, { passive: true });
-
       this._seek.addEventListener('input', () => {
         this._updateSeekFill(this._seek.value);
         this._updateTimeDuringDrag();
       });
-
       this._seek.addEventListener('change', () => {
-        if (audio.duration) {
-          audio.currentTime = (this._seek.value / 100) * audio.duration;
-        }
+        if (audio.duration) audio.currentTime = (this._seek.value / 100) * audio.duration;
         this._dragging = false;
       });
-
       this._seek.addEventListener('mouseup',  () => { this._dragging = false; });
       this._seek.addEventListener('touchend', () => { this._dragging = false; });
     }
@@ -278,32 +259,21 @@
       this._playBtn.setAttribute('aria-label', playing ? 'Pause' : 'Play');
     }
 
-    _updateSeekFill(pct) {
-      this._seek.style.backgroundSize = `${pct}% 100%`;
-    }
-
+    _updateSeekFill(pct) { this._seek.style.backgroundSize = `${pct}% 100%`; }
     _fmt(secs) {
       if (!isFinite(secs) || isNaN(secs)) return '--:--';
       const m = Math.floor(secs / 60);
       const s = Math.floor(secs % 60).toString().padStart(2, '0');
       return `${m}:${s}`;
     }
-
-    _updateTime() {
-      const cur = this._audio.currentTime;
-      const dur = this._audio.duration;
-      this._timeEl.textContent = `${this._fmt(cur)} / ${this._fmt(dur)}`;
-    }
-
+    _updateTime() { this._timeEl.textContent = `${this._fmt(this._audio.currentTime)} / ${this._fmt(this._audio.duration)}`; }
     _updateTimeDuringDrag() {
-      const dur = this._audio.duration;
-      const cur = dur ? (this._seek.value / 100) * dur : 0;
-      this._timeEl.textContent = `${this._fmt(cur)} / ${this._fmt(dur)}`;
+      const cur = this._audio.duration ? (this._seek.value / 100) * this._audio.duration : 0;
+      this._timeEl.textContent = `${this._fmt(cur)} / ${this._fmt(this._audio.duration)}`;
     }
   }
 
   if (!customElements.get('kptz-audio-player')) {
     customElements.define('kptz-audio-player', KptzAudioPlayer);
   }
-  
 })();
