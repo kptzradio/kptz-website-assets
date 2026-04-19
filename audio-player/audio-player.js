@@ -176,10 +176,6 @@
   `;
 
 class KptzAudioPlayer extends HTMLElement {
-    static get observedAttributes() {
-      return ['player-data'];
-    }
-
     constructor() {
       super();
       this.attachShadow({ mode: 'open' });
@@ -199,30 +195,49 @@ class KptzAudioPlayer extends HTMLElement {
       this._bindEvents();
     }
 
-    attributeChangedCallback(name, _old, val) {
-      if (name === 'player-data' && val) {
+    connectedCallback() {
+      console.log('[kptz-player] Element attached, searching for payload...');
+      this._attemptDataLoad();
+    }
+
+    _attemptDataLoad(attempts = 0) {
+      if (attempts > 20) {
+        console.error('[kptz-player] Gave up looking for payload after 2 seconds.');
+        return;
+      }
+
+      // Find the parent repeater container
+      const parentRepeaterRow = this.closest('.wixui-repeater__item') || this.parentElement;
+      
+      // Look for the hidden text element inside this row
+      // We look for an ID that ENDS with playerDataPayload (to catch pinnedplayerDataPayload etc)
+      const payloadElement = parentRepeaterRow ? parentRepeaterRow.querySelector('[id$="playerDataPayload"]') : null;
+
+      if (payloadElement && payloadElement.textContent && payloadElement.textContent.includes('{')) {
         try {
-          const data = JSON.parse(val);
+          const data = JSON.parse(payloadElement.textContent);
+          console.log(`[kptz-player] Payload found for: ${data.track}`);
           
           if (data.src && this._audio.src !== data.src) {
             this._audio.src = data.src;
             this._audio.load();
           }
-          
           if (data.track) this._trackEl.textContent = data.track;
           if (data.artist) this._artistEl.textContent = data.artist;
           if (data.cover) this._cover.src = data.cover;
 
           this._updateSeekFill(0);
           this._updateTime();
-          
-          console.log(`[kptz-player] Successfully parsed JSON for: ${data.track}`);
         } catch (err) {
-          console.error('[kptz-player] Failed to parse player-data:', err);
+          console.error('[kptz-player] Failed to parse payload JSON:', err);
         }
+      } else {
+        // If the text element isn't populated yet, wait 100ms and try again
+        setTimeout(() => this._attemptDataLoad(attempts + 1), 100);
       }
     }
 
+    // ... [KEEP ALL EXISTING _bindEvents AND HELPER METHODS BELOW THIS LINE] ...
     _bindEvents() {
       const audio = this._audio;
       audio.addEventListener('loadedmetadata', () => this._updateTime());
