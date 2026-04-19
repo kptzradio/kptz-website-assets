@@ -176,10 +176,6 @@
   `;
 
   class KptzAudioPlayer extends HTMLElement {
-    static get observedAttributes() {
-      return ['player-data'];
-    }
-
     constructor() {
       super();
       this.attachShadow({ mode: 'open' });
@@ -199,28 +195,26 @@
       this._bindEvents();
     }
 
-    attributeChangedCallback(name, _old, val) {
-      if (name === 'player-data' && val && val !== _old) {
-        try {
-          const data = JSON.parse(val);
-          
-          // Prevent redundant network requests if Wix recycles the same data
-          if (data.src && this._audio.src !== data.src) {
-            this._audio.src = data.src;
-            this._audio.load();
-          }
-          
-          if (data.track) this._trackEl.textContent = data.track;
-          if (data.artist) this._artistEl.textContent = data.artist;
-          if (data.cover) this._cover.src = data.cover;
-
-          this._updateSeekFill(0);
-          this._updateTime();
-        } catch (err) {
-          console.error('[kptz-player] Failed to parse player-data:', err);
+    setPlayerData(data) {
+      if (!data) return;
+      
+      try {
+        // Prevent redundant loads
+        if (data.src && this._audio.src !== data.src) {
+          this._audio.src = data.src;
+          this._audio.load();
         }
+        
+        if (data.track) this._trackEl.textContent = data.track;
+        if (data.artist) this._artistEl.textContent = data.artist;
+        if (data.cover) this._cover.src = data.cover;
+
+        this._updateSeekFill(0);
+        this._updateTime();
+      } catch (err) {
+        console.error('[kptz-player] Failed to apply data:', err);
       }
-    }
+    }      
 
     _bindEvents() {
       const audio = this._audio;
