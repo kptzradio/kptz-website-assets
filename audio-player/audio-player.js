@@ -176,6 +176,10 @@
   `;
 
 class KptzAudioPlayer extends HTMLElement {
+    static get observedAttributes() {
+      return ['player-data'];
+    }
+
     constructor() {
       super();
       this.attachShadow({ mode: 'open' });
@@ -195,27 +199,30 @@ class KptzAudioPlayer extends HTMLElement {
       this._bindEvents();
     }
 
-    // --- CRITICAL FIX: The Value Setter ---
-    // When Velo passes an object via .value, this function executes instantly.
-    set value(data) {
-        if (!data) return;
-        
-        console.log('[kptz-player] Received payload via .value setter', data.track);
-
-        if (data.src && this._audio.src !== data.src) {
+    attributeChangedCallback(name, _old, val) {
+      if (name === 'player-data' && val) {
+        try {
+          const data = JSON.parse(val);
+          
+          if (data.src && this._audio.src !== data.src) {
             this._audio.src = data.src;
             this._audio.load();
-        }
-        
-        if (data.track) this._trackEl.textContent = data.track;
-        if (data.artist) this._artistEl.textContent = data.artist;
-        if (data.cover) this._cover.src = data.cover;
+          }
+          
+          if (data.track) this._trackEl.textContent = data.track;
+          if (data.artist) this._artistEl.textContent = data.artist;
+          if (data.cover) this._cover.src = data.cover;
 
-        this._updateSeekFill(0);
-        this._updateTime();
+          this._updateSeekFill(0);
+          this._updateTime();
+          
+          console.log(`[kptz-player] Successfully parsed JSON for: ${data.track}`);
+        } catch (err) {
+          console.error('[kptz-player] Failed to parse player-data:', err);
+        }
+      }
     }
 
-    // ... [KEEP ALL EXISTING _bindEvents AND HELPER METHODS BELOW THIS LINE] ...
     _bindEvents() {
       const audio = this._audio;
       audio.addEventListener('loadedmetadata', () => this._updateTime());
