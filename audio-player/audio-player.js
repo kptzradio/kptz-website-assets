@@ -200,43 +200,49 @@ class KptzAudioPlayer extends HTMLElement {
     }
 
     connectedCallback() {
-      // In case Wix set the attribute slightly before we connected
-      if (this.hasAttribute('player-data')) {
-        this.attributeChangedCallback('player-data', null, this.getAttribute('player-data'));
-      }
+        // If data arrived before we were fully connected, apply it now
+        if (this._pendingData) {
+            this._applyData(this._pendingData);
+            this._pendingData = null;
+        }
     }
-
+  
     attributeChangedCallback(name, _old, val) {
-      if (name === 'player-data' && val && val !== _old) {
+      if (name === 'player-data' && val) {
         try {
           const data = JSON.parse(val);
           
-          // 1. Safe Audio Loading
-          if (data.src && this._audio.src !== data.src) {
-            this._audio.src = data.src;
-            // Wrap the load in a silent catch block in case the URL is malformed
-            try { this._audio.load(); } catch (e) {} 
-          }
-          
-          // 2. Safe Text Binding
-          if (data.track) this._trackEl.textContent = data.track;
-          if (data.artist) this._artistEl.textContent = data.artist;
-          
-          // 3. Safe Cover Image Binding
-          if (data.cover) {
-              this._cover.src = data.cover;
-          } else {
-              // Ensure we have a fallback if the payload cover is blank
-              this._cover.src = "https://static.wixstatic.com/media/c80cf5_edd526e0ebbe41e08c7697037ed05647~mv2.png";
+          // If the internal elements aren't ready yet, save the data for later
+          if (!this._cover || !this._trackEl) {
+              this._pendingData = data;
+              return;
           }
 
-          this._updateSeekFill(0);
-          this._updateTime();
-          console.log(`[kptz-player] Successfully loaded track: ${data.track}`);
+          this._applyData(data);
         } catch (err) {
-          console.error('[kptz-player] JSON parse error:', err);
+          console.error('[kptz-player] JSON error:', err);
         }
       }
+    }
+
+    _applyData(data) {
+        console.log(`[kptz-player] Applying data for: ${data.track}`);
+        
+        if (data.src && this._audio.src !== data.src) {
+            this._audio.src = data.src;
+            try { this._audio.load(); } catch(e) {}
+        }
+        
+        if (data.track) this._trackEl.textContent = data.track;
+        if (data.artist) this._artistEl.textContent = data.artist;
+        
+        // FORCING the cover image
+        if (data.cover) {
+            this._cover.src = data.cover;
+        } else {
+            this._cover.src = "https://static.wixstatic.com/media/c80cf5_edd526e0ebbe41e08c7697037ed05647~mv2.png";
+        }
+        this._updateTime();
     }
   
     _bindEvents() {
