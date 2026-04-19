@@ -176,44 +176,130 @@
   `;
 
 class KptzAudioPlayer extends HTMLElement {
-    static get observedAttributes() { return ['player-data']; }
+    static get observedAttributes() {
+      return ['player-data'];
+    }
+
     constructor() {
       super();
-      this.attachShadow({ mode: 'open' }).appendChild(TEMPLATE.content.cloneNode(true));
-      this._audio = this.shadowRoot.querySelector('audio');
-      this._cover = this.shadowRoot.querySelector('.cover');
-      this._trackEl = this.shadowRoot.querySelector('.track-name');
-      this._artistEl = this.shadowRoot.querySelector('.artist-name');
+      this.attachShadow({ mode: 'open' });
+      this.shadowRoot.appendChild(TEMPLATE.content.cloneNode(true));
+
+      this._audio     = this.shadowRoot.querySelector('audio');
+      this._playBtn   = this.shadowRoot.querySelector('.play-btn');
+      this._iconPlay  = this.shadowRoot.querySelector('.icon-play');
+      this._iconPause = this.shadowRoot.querySelector('.icon-pause');
+      this._seek      = this.shadowRoot.querySelector('.seek');
+      this._timeEl    = this.shadowRoot.querySelector('.time');
+      this._cover     = this.shadowRoot.querySelector('.cover');
+      this._trackEl   = this.shadowRoot.querySelector('.track-name');
+      this._artistEl  = this.shadowRoot.querySelector('.artist-name');
+
+      this._dragging = false;
       this._bindEvents();
     }
 
-    attributeChangedCallback(name, old, val) {
+    connectedCallback() {
+        // If data arrived before we were fully connected, apply it now
+        if (this._pendingData) {
+            this._applyData(this._pendingData);
+            this._pendingData = null;
+        }
+    }
+  
+    attributeChangedCallback(name, _old, val) {
       if (name === 'player-data' && val) {
         try {
           const data = JSON.parse(val);
-          // If browser hasn't finished "connecting" elements, save it.
-          if (!this._cover) { this._pendingData = data; return; }
-          this._applyData(data);
-        } catch (e) { console.error("JSON error", e); }
-      }
-    }
+          
+          // If the internal elements aren't ready yet, save the data for later
+          if (!this._cover || !this._trackEl) {
+              this._pendingData = data;
+              return;
+          }
 
-    connectedCallback() {
-      if (this._pendingData) { this._applyData(this._pendingData); this._pendingData = null; }
+          this._applyData(data);
+        } catch (err) {
+          console.error('[kptz-player] JSON error:', err);
+        }
+      }
     }
 
     _applyData(data) {
-      if (data.src && this._audio.src !== data.src) {
-        this._audio.src = data.src;
-        try { this._audio.load(); } catch(e) {}
-      }
-      this._trackEl.textContent = data.track || "";
-      this._artistEl.textContent = data.artist || "";
-      this._cover.src = data.cover || "https://static.wixstatic.com/media/c80cf5_edd526e0ebbe41e08c7697037ed05647~mv2.png";
+        console.log(`[kptz-player] Applying data for: ${data.track}`);
+        
+        if (data.src && this._audio.src !== data.src) {
+            this._audio.src = data.src;
+            try { this._audio.load(); } catch(e) {}
+        }
+        
+        if (data.track) this._trackEl.textContent = data.track;
+        if (data.artist) this._artistEl.textContent = data.artist;
+        
+        // FORCING the cover image
+        if (data.cover) {
+            this._cover.src = data.cover;
+        } else {
+            this._cover.src = "https://static.wixstatic.com/media/c80cf5_edd526e0ebbe41e08c7697037ed05647~mv2.png";
+        }
+        this._updateTime();
+    }
+  
+    _bindEvents() {
+      const audio = this._audio;
+      audio.addEventListener('loadedmetadata', () => this._updateTime());
+      audio.addEventListener('timeupdate', () => {
+        if (!this._dragging) {
+          const pct = audio.duration ? (audio.currentTime / audio.duration) * 100 : 0;
+          this._seek.value = pct;
+          this._updateSeekFill(pct);
+          this._updateTime();
+        }
+      });
+      audio.addEventListener('ended', () => {
+        this._setPlaying(false);
+        this._seek.value = 0;
+        this._updateSeekFill(0);
+      });
+      this._playBtn.addEventListener('click', () => {
+        if (audio.paused) { audio.play(); this._setPlaying(true); } 
+        else { audio.pause(); this._setPlaying(false); }
+      });
+      this._seek.addEventListener('mousedown',  () => { this._dragging = true; });
+      this._seek.addEventListener('touchstart', () => { this._dragging = true; }, { passive: true });
+      this._seek.addEventListener('input', () => {
+        this._updateSeekFill(this._seek.value);
+        this._updateTimeDuringDrag();
+      });
+      this._seek.addEventListener('change', () => {
+        if (audio.duration) audio.currentTime = (this._seek.value / 100) * audio.duration;
+        this._dragging = false;
+      });
+      this._seek.addEventListener('mouseup',  () => { this._dragging = false; });
+      this._seek.addEventListener('touchend', () => { this._dragging = false; });
     }
 
-    _bindEvents() { /* ... existing audio event listeners ... */ }
+    _setPlaying(playing) {
+      this._iconPlay.style.display  = playing ? 'none'  : 'block';
+      this._iconPause.style.display = playing ? 'block' : 'none';
+      this._playBtn.setAttribute('aria-label', playing ? 'Pause' : 'Play');
+    }
+
+    _updateSeekFill(pct) { this._seek.style.backgroundSize = `${pct}% 100%`; }
+    _fmt(secs) {
+      if (!isFinite(secs) || isNaN(secs)) return '--:--';
+      const m = Math.floor(secs / 60);
+      const s = Math.floor(secs % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+    _updateTime() { this._timeEl.textContent = `${this._fmt(this._audio.currentTime)} / ${this._fmt(this._audio.duration)}`; }
+    _updateTimeDuringDrag() {
+      const cur = this._audio.duration ? (this._seek.value / 100) * this._audio.duration : 0;
+      this._timeEl.textContent = `${this._fmt(cur)} / ${this._fmt(this._audio.duration)}`;
+    }
   }
 
-  if (!customElements.get('kptz-audio-player')) customElements.define('kptz-audio-player', KptzAudioPlayer);
+  if (!customElements.get('kptz-audio-player')) {
+    customElements.define('kptz-audio-player', KptzAudioPlayer);
+  }
 })();
