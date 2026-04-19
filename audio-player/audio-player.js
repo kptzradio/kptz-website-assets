@@ -196,27 +196,21 @@ class KptzAudioPlayer extends HTMLElement {
     }
 
     connectedCallback() {
-      console.log('[kptz-player] Element attached, searching for payload...');
+      console.log('[kptz-player] Element attached, polling own properties for payload...');
       this._attemptDataLoad();
     }
 
     _attemptDataLoad(attempts = 0) {
-      if (attempts > 20) {
-        console.error('[kptz-player] Gave up looking for payload after 2 seconds.');
+      if (attempts > 30) {
+        console.error('[kptz-player] Gave up looking for self.playerPayloadData after 3 seconds.');
         return;
       }
 
-      // Find the parent repeater container
-      const parentRepeaterRow = this.closest('.wixui-repeater__item') || this.parentElement;
-      
-      // Look for the hidden text element inside this row
-      // We look for an ID that ENDS with playerDataPayload (to catch pinnedplayerDataPayload etc)
-      const payloadElement = parentRepeaterRow ? parentRepeaterRow.querySelector('[id$="playerDataPayload"]') : null;
-
-      if (payloadElement && payloadElement.textContent && payloadElement.textContent.includes('{')) {
+      // Instead of reading the DOM, we just read our own JavaScript property
+      if (this.playerPayloadData) {
         try {
-          const data = JSON.parse(payloadElement.textContent);
-          console.log(`[kptz-player] Payload found for: ${data.track}`);
+          const data = JSON.parse(this.playerPayloadData);
+          console.log(`[kptz-player] Internal Property Payload found for: ${data.track}`);
           
           if (data.src && this._audio.src !== data.src) {
             this._audio.src = data.src;
@@ -228,16 +222,18 @@ class KptzAudioPlayer extends HTMLElement {
 
           this._updateSeekFill(0);
           this._updateTime();
+          
+          // Clear the property so we don't double-load if Wix recycles the component
+          this.playerPayloadData = null; 
         } catch (err) {
-          console.error('[kptz-player] Failed to parse payload JSON:', err);
+          console.error('[kptz-player] Failed to parse internal property JSON:', err);
         }
       } else {
-        // If the text element isn't populated yet, wait 100ms and try again
+        // Wix's bridge hasn't synchronized the property yet, check back in 100ms
         setTimeout(() => this._attemptDataLoad(attempts + 1), 100);
       }
     }
 
-    // ... [KEEP ALL EXISTING _bindEvents AND HELPER METHODS BELOW THIS LINE] ...
     _bindEvents() {
       const audio = this._audio;
       audio.addEventListener('loadedmetadata', () => this._updateTime());
