@@ -216,16 +216,18 @@
     }
 
     connectedCallback() {
-      this._connected = true;
-      console.log('[kptz-player] connectedCallback fired, checking attributes...');
-      
-      // Apply any pending attributes that arrived before connection
-      if (this._pending) {
-        Object.entries(this._pending).forEach(([name, val]) => {
-          console.log(`[kptz-player] applying pending attr ${name} = ${val}`);
-          this._applyAttribute(name, val);
-        });
-      }
+        this._connected = true;
+        console.log('[kptz-player] connectedCallback fired, checking attributes...');
+        
+        // Apply any pending attributes that arrived before connection
+        if (this._pending) {
+            Object.entries(this._pending).forEach(([name, val]) => {
+                this._applyAttribute(name, val);
+            });
+        }
+    
+        // NEW: Tell Wix Velo that this specific instance is ready for data
+        this.dispatchEvent(new CustomEvent('player-ready')); 
     }
     
     _upgradeProperty(prop) {
@@ -368,28 +370,5 @@
   if (!customElements.get('kptz-audio-player')) {
     customElements.define('kptz-audio-player', KptzAudioPlayer);
   }
-
-  const _kptzObserver = new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-      if (
-        mutation.type === 'attributes' &&
-        mutation.target.nodeName === 'KPTZ-AUDIO-PLAYER' &&
-        mutation.target._pending &&
-        !mutation.target._connected
-      ) {
-        const node = mutation.target;
-        node._connected = true;
-        Object.entries(node._pending).forEach(([name, val]) => {
-          node._applyAttribute(name, val);
-        });
-      }
-    }
-  });
-
-  _kptzObserver.observe(document.documentElement, { 
-    attributes: true, 
-    subtree: true,
-    attributeFilter: ['src', 'track-name', 'artist-name', 'cover-image']
-  });
   
 })();
