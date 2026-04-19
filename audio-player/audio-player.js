@@ -176,10 +176,6 @@
   `;
 
 class KptzAudioPlayer extends HTMLElement {
-    static get observedAttributes() {
-      return ['src', 'track-name', 'artist-name', 'cover-image'];
-    }
-
     constructor() {
       super();
       this.attachShadow({ mode: 'open' });
@@ -199,26 +195,27 @@ class KptzAudioPlayer extends HTMLElement {
       this._bindEvents();
     }
 
-    connectedCallback() {
-        console.log('[kptz-player] Element attached to DOM!');
+    // --- CRITICAL FIX: The Value Setter ---
+    // When Velo passes an object via .value, this function executes instantly.
+    set value(data) {
+        if (!data) return;
+        
+        console.log('[kptz-player] Received payload via .value setter', data.track);
+
+        if (data.src && this._audio.src !== data.src) {
+            this._audio.src = data.src;
+            this._audio.load();
+        }
+        
+        if (data.track) this._trackEl.textContent = data.track;
+        if (data.artist) this._artistEl.textContent = data.artist;
+        if (data.cover) this._cover.src = data.cover;
+
+        this._updateSeekFill(0);
+        this._updateTime();
     }
 
-    attributeChangedCallback(name, _old, val) {
-      if (!val) return;
-      console.log(`[kptz-player] Received ${name}: ${val.substring(0, 25)}...`);
-
-      if (name === 'src' && this._audio.src !== val) {
-        this._audio.src = val;
-        this._audio.load();
-      }
-      if (name === 'track-name') this._trackEl.textContent = val;
-      if (name === 'artist-name') this._artistEl.textContent = val;
-      if (name === 'cover-image') this._cover.src = val;
-
-      this._updateSeekFill(0);
-      this._updateTime();
-    }
-
+    // ... [KEEP ALL EXISTING _bindEvents AND HELPER METHODS BELOW THIS LINE] ...
     _bindEvents() {
       const audio = this._audio;
       audio.addEventListener('loadedmetadata', () => this._updateTime());
