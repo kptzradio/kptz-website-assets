@@ -218,8 +218,6 @@
     connectedCallback() {
       this._connected = true;
       console.log('[kptz-player] connectedCallback fired, checking attributes...');
-
-      this.dispatchEvent(new CustomEvent('audio-player-ready', { bubbles: true }));
       
       // Apply any pending attributes that arrived before connection
       if (this._pending) {
@@ -262,6 +260,12 @@
       
       // Only apply immediately if already connected
       if (!this._connected) return;
+
+      if (!this._readyFired) {
+        this._readyFired = true;
+        this.dispatchEvent(new CustomEvent('audio-player-ready', { bubbles: true }});
+      }
+      
       this._applyAttribute(name, val);
     }
 
