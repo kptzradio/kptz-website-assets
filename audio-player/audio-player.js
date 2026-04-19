@@ -211,14 +211,24 @@ class KptzAudioPlayer extends HTMLElement {
         try {
           const data = JSON.parse(val);
           
+          // 1. Safe Audio Loading
           if (data.src && this._audio.src !== data.src) {
             this._audio.src = data.src;
-            this._audio.load();
+            // Wrap the load in a silent catch block in case the URL is malformed
+            try { this._audio.load(); } catch (e) {} 
           }
           
+          // 2. Safe Text Binding
           if (data.track) this._trackEl.textContent = data.track;
           if (data.artist) this._artistEl.textContent = data.artist;
-          if (data.cover) this._cover.src = data.cover;
+          
+          // 3. Safe Cover Image Binding
+          if (data.cover) {
+              this._cover.src = data.cover;
+          } else {
+              // Ensure we have a fallback if the payload cover is blank
+              this._cover.src = "https://static.wixstatic.com/media/c80cf5_edd526e0ebbe41e08c7697037ed05647~mv2.png";
+          }
 
           this._updateSeekFill(0);
           this._updateTime();
@@ -228,7 +238,7 @@ class KptzAudioPlayer extends HTMLElement {
         }
       }
     }
-
+  
     _bindEvents() {
       const audio = this._audio;
       audio.addEventListener('loadedmetadata', () => this._updateTime());
