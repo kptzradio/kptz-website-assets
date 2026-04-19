@@ -216,18 +216,23 @@
     }
 
     connectedCallback() {
-        this._connected = true;
-        console.log('[kptz-player] connectedCallback fired, checking attributes...');
-        
-        // Apply any pending attributes that arrived before connection
-        if (this._pending) {
-            Object.entries(this._pending).forEach(([name, val]) => {
-                this._applyAttribute(name, val);
-            });
-        }
+      this._connected = true;
+      console.log('[kptz-player] connectedCallback fired, starting ping loop...');
+      
+      // Clear any existing intervals just in case
+      if (this._pingInterval) clearInterval(this._pingInterval);
     
-        // NEW: Tell Wix Velo that this specific instance is ready for data
-        this.dispatchEvent(new CustomEvent('player-ready')); 
+      // Ping Wix Velo every 100ms UNTIL we get our data
+      this._pingInterval = setInterval(() => {
+        if (this.getAttribute('player-data')) {
+          // We got the data! Stop pinging.
+          clearInterval(this._pingInterval);
+          console.log('[kptz-player] Data received, ping loop stopped.');
+        } else {
+          // Tell Velo we are alive and hungry for data
+          this.dispatchEvent(new CustomEvent('ping-data', { bubbles: true, composed: true }));
+        }
+      }, 100);
     }
     
     _upgradeProperty(prop) {
@@ -253,37 +258,25 @@
     get coverImage()    { return this.getAttribute('cover-image') || ''; }
 
     attributeChangedCallback(name, _old, val) {
-      if (!val) return;
-
-      if (name === 'player-data') {
-        try {
-          const data = JSON.parse(val);
-
-          if (data.src) {
-            this._audio.src = data.src;
-            this._audio.load();
-          }
-          if (data.track) this._trackEl.textContent = data.track;
-          if (data.artist) this._artistEl.textContent = data.artist;
-          if (data.cover) this._cover.src = data.cover;
-
-          this._updateSeekFill(0);
-          this._updateTime();
-        catch {
-          console.error('[kptz-player] Failed to parse player-data', e);
+      if (!val || name !== 'player-data') return;
+    
+      try {
+        const data = JSON.parse(val);
+        if (data.src) {
+          this._audio.src = data.src;
+          this._audio.load();
         }
-        return;
-      ]
-      
-      // Store pending data regardless of connection state
-      this._pending = this._pending || {};
-      this._pending[name] = val;
-      
-      // Only apply immediately if already connected
-      if (!this._connected) return;
-      this._applyAttribute(name, val);
+        if (data.track) this._trackEl.textContent = data.track;
+        if (data.artist) this._artistEl.textContent = data.artist;
+        if (data.cover) this._cover.src = data.cover;
+        
+        this._updateSeekFill(0);
+        this._updateTime();
+      } catch(e) {
+        console.error('[kptz-player] Failed to parse player-data', e);
+      }
     }
-
+    
     _applyAttribute(name, val) {
       switch (name) {
         case 'src':
