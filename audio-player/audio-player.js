@@ -1,22 +1,6 @@
 /**
  * kptz-audio-player.js
- * Custom HTML5 audio player web component for KPTZ.
- *
- * Usage (after loading this script):
- *
- *   <kptz-audio-player
- *     src="https://..."
- *     track-name="Local News for 2/5/26"
- *     artist-name="2/5/2026"
- *     cover-image="https://..."
- *   ></kptz-audio-player>
- *
- * Or set via JS properties:
- *   const player = document.querySelector('kptz-audio-player');
- *   player.src         = itemData.audioFileUrl;
- *   player.trackName   = itemData.title;
- *   player.artistName  = airDateDisplay;
- *   player.coverImage  = showObj?.logo ?? KPTZ_LOGO;
+ * Custom HTML5 audio player web component.
  */
 
 (function () {
@@ -193,7 +177,7 @@
 
   class KptzAudioPlayer extends HTMLElement {
     static get observedAttributes() {
-      return ['src', 'track-name', 'artist-name', 'cover-image', 'player-data'];
+      return ['player-data'];
     }
 
     constructor() {
@@ -215,89 +199,29 @@
       this._bindEvents();
     }
 
-    connectedCallback() {
-      this._connected = true;
-      console.log('[kptz-player] connectedCallback fired, starting ping loop...');
-      
-      // Clear any existing intervals just in case
-      if (this._pingInterval) clearInterval(this._pingInterval);
-    
-      // Ping Wix Velo every 100ms UNTIL we get our data
-      this._pingInterval = setInterval(() => {
-        if (this.getAttribute('player-data')) {
-          // We got the data! Stop pinging.
-          clearInterval(this._pingInterval);
-          console.log('[kptz-player] Data received, ping loop stopped.');
-        } else {
-          // Tell Velo we are alive and hungry for data
-          this.dispatchEvent(new CustomEvent('ping-data', { bubbles: true, composed: true }));
-        }
-      }, 100);
-    }
-    
-    _upgradeProperty(prop) {
-      // Check if there is an attribute already on the HTML tag
-      const val = this.getAttribute(prop);
-      if (val) {
-        // Manually trigger the update logic
-        this.attributeChangedCallback(prop, null, val);
-      }
-    }
-    
-    // JS property setters — mirrors your existing repeater code style
-    set src(val)        { this.setAttribute('src', val); }
-    get src()           { return this.getAttribute('src') || ''; }
-
-    set trackName(val)  { this.setAttribute('track-name', val); }
-    get trackName()     { return this.getAttribute('track-name') || ''; }
-
-    set artistName(val) { this.setAttribute('artist-name', val); }
-    get artistName()    { return this.getAttribute('artist-name') || ''; }
-
-    set coverImage(val) { this.setAttribute('cover-image', val); }
-    get coverImage()    { return this.getAttribute('cover-image') || ''; }
-
     attributeChangedCallback(name, _old, val) {
-      if (!val || name !== 'player-data') return;
-    
-      try {
-        const data = JSON.parse(val);
-        if (data.src) {
-          this._audio.src = data.src;
-          this._audio.load();
-        }
-        if (data.track) this._trackEl.textContent = data.track;
-        if (data.artist) this._artistEl.textContent = data.artist;
-        if (data.cover) this._cover.src = data.cover;
-        
-        this._updateSeekFill(0);
-        this._updateTime();
-      } catch(e) {
-        console.error('[kptz-player] Failed to parse player-data', e);
-      }
-    }
-    
-    _applyAttribute(name, val) {
-      switch (name) {
-        case 'src':
-          this._audio.src = val;
-          this._audio.load();
+      if (name === 'player-data' && val && val !== _old) {
+        try {
+          const data = JSON.parse(val);
+          
+          // Prevent redundant network requests if Wix recycles the same data
+          if (data.src && this._audio.src !== data.src) {
+            this._audio.src = data.src;
+            this._audio.load();
+          }
+          
+          if (data.track) this._trackEl.textContent = data.track;
+          if (data.artist) this._artistEl.textContent = data.artist;
+          if (data.cover) this._cover.src = data.cover;
+
           this._updateSeekFill(0);
           this._updateTime();
-          this.dispatchEvent(new CustomEvent('audio-player-ready', { bubbles: true }));
-          break;
-        case 'track-name':
-          this._trackEl.textContent = val;
-          break;
-        case 'artist-name':
-          this._artistEl.textContent = val;
-          break;
-        case 'cover-image':
-          this._cover.src = val;
-          break;
+        } catch (err) {
+          console.error('[kptz-player] Failed to parse player-data:', err);
+        }
       }
     }
-    
+
     _bindEvents() {
       const audio = this._audio;
 
