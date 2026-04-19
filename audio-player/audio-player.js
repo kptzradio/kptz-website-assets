@@ -260,12 +260,6 @@
       
       // Only apply immediately if already connected
       if (!this._connected) return;
-
-      if (!this._readyFired) {
-        this._readyFired = true;
-        this.dispatchEvent(new CustomEvent('audio-player-ready', { bubbles: true }});
-      }
-      
       this._applyAttribute(name, val);
     }
 
@@ -276,6 +270,7 @@
           this._audio.load();
           this._updateSeekFill(0);
           this._updateTime();
+          this.dispatchEvent(new CustomEvent('audio-player-ready', { bubbles: true }));
           break;
         case 'track-name':
           this._trackEl.textContent = val;
