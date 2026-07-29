@@ -158,12 +158,12 @@
       @container (max-width: 479px) {
         .player {
           padding: 8px 10px;
-          gap: 10px;
+          gap: 8px;
         }
 
         .cover {
-          width: 46px;
-          height: 46px;
+          width: 44px;
+          height: 44px;
         }
 
         .meta {
@@ -188,48 +188,56 @@
           gap: 6px;
         }
 
+        .play-btn {
+          width: 26px;
+          height: 26px;
+        }
+
         .time {
           font-size: 0.72rem;
         }
       }
 
-      /* Narrow Breakpoint (< 330px) */
-      @container (max-width: 329px) {
+      /* Narrow Breakpoint (< 340px) */
+      @container (max-width: 339px) {
         .player {
-          padding: 8px;
-          gap: 8px;
-          align-items: flex-start;
+          padding: 6px 8px;
+          gap: 6px;
         }
 
         .cover {
-          width: 42px;
-          height: 42px;
+          width: 38px;
+          height: 38px;
         }
 
         .body {
-          gap: 5px;
+          gap: 3px;
+        }
+
+        .track-name {
+          font-size: 0.8rem;
+        }
+
+        .artist-name {
+          font-size: 0.72rem;
         }
 
         .controls {
-          flex-wrap: wrap;
-          justify-content: space-between;
-          gap: 4px 6px;
+          gap: 4px;
         }
 
         .play-btn {
-          order: 1;
+          width: 24px;
+          height: 24px;
+        }
+
+        .play-btn svg {
+          width: 15px;
+          height: 15px;
         }
 
         .time {
-          order: 2;
-          font-size: 0.7rem;
-        }
-
-        .seek-wrapper {
-          order: 3;
-          width: 100%;
-          flex: 0 0 100%;
-          margin-top: 2px;
+          font-size: 0.68rem;
         }
       }
     </style>
