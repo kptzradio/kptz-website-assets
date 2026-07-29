@@ -10,6 +10,9 @@
       :host {
         display: block;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        container-type: inline-size;
+        width: 100%;
+        box-sizing: border-box;
       }
 
       .player {
@@ -23,6 +26,7 @@
         box-shadow: 0 1px 3px rgba(0,0,0,0.07);
         min-height: 64px;
         box-sizing: border-box;
+        width: 100%;
       }
 
       .cover {
@@ -46,8 +50,8 @@
         display: flex;
         align-items: baseline;
         gap: 6px;
-        flex-wrap: wrap;
         line-height: 1.2;
+        min-width: 0;
       }
 
       .track-name {
@@ -63,18 +67,23 @@
       .separator {
         color: #aaa;
         font-size: 0.8rem;
+        flex-shrink: 0;
       }
 
       .artist-name {
         font-size: 0.8rem;
         color: #888;
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
       }
 
       .controls {
         display: flex;
         align-items: center;
         gap: 8px;
+        width: 100%;
       }
 
       .play-btn {
@@ -92,7 +101,7 @@
         border-radius: 50%;
         transition: background 0.15s;
       }
-      .play-btn:hover { background: #f0f0f0; }
+      .play-btn:hover { background: #e8e8e8; }
       .play-btn svg { display: block; }
 
       .seek-wrapper {
@@ -103,6 +112,7 @@
       }
 
       .seek {
+        width: 100%;
         flex: 1;
         -webkit-appearance: none;
         appearance: none;
@@ -137,8 +147,90 @@
         color: #888;
         white-space: nowrap;
         letter-spacing: 0.01em;
-        min-width: 72px;
+        font-variant-numeric: tabular-nums;
         text-align: right;
+        flex-shrink: 0;
+      }
+
+      /* Container Queries for Responsiveness */
+
+      /* Medium Breakpoint (< 480px) */
+      @container (max-width: 479px) {
+        .player {
+          padding: 8px 10px;
+          gap: 10px;
+        }
+
+        .cover {
+          width: 46px;
+          height: 46px;
+        }
+
+        .meta {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 1px;
+        }
+
+        .separator {
+          display: none;
+        }
+
+        .track-name {
+          font-size: 0.84rem;
+        }
+
+        .artist-name {
+          font-size: 0.76rem;
+        }
+
+        .controls {
+          gap: 6px;
+        }
+
+        .time {
+          font-size: 0.72rem;
+        }
+      }
+
+      /* Narrow Breakpoint (< 330px) */
+      @container (max-width: 329px) {
+        .player {
+          padding: 8px;
+          gap: 8px;
+          align-items: flex-start;
+        }
+
+        .cover {
+          width: 42px;
+          height: 42px;
+        }
+
+        .body {
+          gap: 5px;
+        }
+
+        .controls {
+          flex-wrap: wrap;
+          justify-content: space-between;
+          gap: 4px 6px;
+        }
+
+        .play-btn {
+          order: 1;
+        }
+
+        .time {
+          order: 2;
+          font-size: 0.7rem;
+        }
+
+        .seek-wrapper {
+          order: 3;
+          width: 100%;
+          flex: 0 0 100%;
+          margin-top: 2px;
+        }
       }
     </style>
 
