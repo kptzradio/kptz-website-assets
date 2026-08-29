@@ -104,6 +104,25 @@
       .play-btn:hover { background: #e8e8e8; }
       .play-btn svg { display: block; }
 
+      .download-btn {
+        flex-shrink: 0;
+        width: 28px;
+        height: 28px;
+        border: none;
+        background: none;
+        padding: 0;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #222;
+        border-radius: 50%;
+        transition: background 0.15s;
+        text-decoration: none;
+      }
+      .download-btn:hover { background: #e8e8e8; }
+      .download-btn svg { display: block; }
+
       .seek-wrapper {
         flex: 1;
         display: flex;
@@ -188,7 +207,8 @@
           gap: 6px;
         }
 
-        .play-btn {
+        .play-btn,
+        .download-btn {
           width: 26px;
           height: 26px;
         }
@@ -226,12 +246,14 @@
           gap: 4px;
         }
 
-        .play-btn {
+        .play-btn,
+        .download-btn {
           width: 24px;
           height: 24px;
         }
 
-        .play-btn svg {
+        .play-btn svg,
+        .download-btn svg {
           width: 15px;
           height: 15px;
         }
@@ -268,6 +290,13 @@
           </div>
 
           <span class="time">0:00 / --:--</span>
+
+          <button class="download-btn" aria-label="Download" title="Download">
+            <svg class="icon-download" width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <path d="M9 3v8m0 0l-3.5-3.5M9 11l3.5-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M3.5 14.5h11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </button>
         </div>
       </div>
     </div>
@@ -285,16 +314,18 @@ class KptzAudioPlayer extends HTMLElement {
       this.attachShadow({ mode: 'open' });
       this.shadowRoot.appendChild(TEMPLATE.content.cloneNode(true));
 
-      this._audio     = this.shadowRoot.querySelector('audio');
-      this._playBtn   = this.shadowRoot.querySelector('.play-btn');
-      this._iconPlay  = this.shadowRoot.querySelector('.icon-play');
-      this._iconPause = this.shadowRoot.querySelector('.icon-pause');
-      this._seek      = this.shadowRoot.querySelector('.seek');
-      this._timeEl    = this.shadowRoot.querySelector('.time');
-      this._cover     = this.shadowRoot.querySelector('.cover');
-      this._trackEl   = this.shadowRoot.querySelector('.track-name');
-      this._artistEl  = this.shadowRoot.querySelector('.artist-name');
+      this._audio       = this.shadowRoot.querySelector('audio');
+      this._playBtn     = this.shadowRoot.querySelector('.play-btn');
+      this._iconPlay    = this.shadowRoot.querySelector('.icon-play');
+      this._iconPause   = this.shadowRoot.querySelector('.icon-pause');
+      this._seek        = this.shadowRoot.querySelector('.seek');
+      this._timeEl      = this.shadowRoot.querySelector('.time');
+      this._downloadBtn = this.shadowRoot.querySelector('.download-btn');
+      this._cover       = this.shadowRoot.querySelector('.cover');
+      this._trackEl     = this.shadowRoot.querySelector('.track-name');
+      this._artistEl    = this.shadowRoot.querySelector('.artist-name');
 
+      this._data = null;
       this._dragging = false;
       this._bindEvents();
     }
@@ -327,6 +358,7 @@ class KptzAudioPlayer extends HTMLElement {
 
     _applyData(data) {
         console.log(`[kptz-player] Applying data for: ${data.track}`);
+        this._data = data;
         
         if (data.src && this._audio.src !== data.src) {
             this._audio.src = data.src;
@@ -342,6 +374,13 @@ class KptzAudioPlayer extends HTMLElement {
         } else {
             this._cover.src = "https://static.wixstatic.com/media/c80cf5_edd526e0ebbe41e08c7697037ed05647~mv2.png";
         }
+
+        if (this._downloadBtn) {
+            const label = data.track ? `Download ${data.track}` : 'Download';
+            this._downloadBtn.setAttribute('aria-label', label);
+            this._downloadBtn.setAttribute('title', label);
+        }
+
         this._updateTime();
     }
   
@@ -365,6 +404,11 @@ class KptzAudioPlayer extends HTMLElement {
         if (audio.paused) { audio.play(); this._setPlaying(true); } 
         else { audio.pause(); this._setPlaying(false); }
       });
+      if (this._downloadBtn) {
+        this._downloadBtn.addEventListener('click', () => {
+          this._download();
+        });
+      }
       this._seek.addEventListener('mousedown',  () => { this._dragging = true; });
       this._seek.addEventListener('touchstart', () => { this._dragging = true; }, { passive: true });
       this._seek.addEventListener('input', () => {
@@ -377,6 +421,52 @@ class KptzAudioPlayer extends HTMLElement {
       });
       this._seek.addEventListener('mouseup',  () => { this._dragging = false; });
       this._seek.addEventListener('touchend', () => { this._dragging = false; });
+    }
+
+    async _download() {
+      const src = (this._data && this._data.downloadUrl) || (this._data && this._data.src) || this._audio.src;
+      if (!src) return;
+
+      let filename = '';
+      if (this._data && this._data.track) {
+        const artist = this._data.artist ? this._data.artist.trim() : '';
+        const track = this._data.track.trim();
+        filename = artist ? `${artist} - ${track}` : track;
+      } else if (this._trackEl && this._trackEl.textContent.trim()) {
+        const artist = this._artistEl ? this._artistEl.textContent.trim() : '';
+        const track = this._trackEl.textContent.trim();
+        filename = artist ? `${artist} - ${track}` : track;
+      }
+
+      if (filename) {
+        filename = filename.replace(/[/\\?%*:|"<>]/g, '-');
+        if (!filename.toLowerCase().endsWith('.mp3')) {
+          filename += '.mp3';
+        }
+      }
+
+      try {
+        const response = await fetch(src);
+        if (!response.ok) throw new Error('Network response was not ok');
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        if (filename) a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+      } catch (err) {
+        const a = document.createElement('a');
+        a.href = src;
+        if (filename) a.download = filename;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
     }
 
     _setPlaying(playing) {
